@@ -7,24 +7,48 @@ class EmpresaCliente {
      public function __construct(){
         $this->db =  Conexion::ConectarDB();
      }
-     
-     public function registrarEmpresa( $nombre,$correo,$descripcion,$clave){
-         $sql = "INSERT INTO empresa_cliente(nombre,correo,descripcion,clave) VALUES (:nombre,:correo,:descripcion,:clave)";
+     /**
+      * Undocumented function
+      *
+      * @param [type] $nombre
+      * @param [type] $correo
+      * @param [type] $descripcion
+      * @param [type] $telefono
+      * @param [type] $clave
+      * @return void
+      */
+     public function registrarEmpresa( $nombre,$correo,$descripcion,$telefono,$clave){
+
+         $validate = "SELECT correo from empresa_cliente where correo = :correo";
+         $validateResult = $this->db->prepare($validate);
+         $validateResult->bindParam('correo',$correo, PDO::PARAM_STR, 12 );
+         $validateResult->execute();
+         if($validateResult->rowCount() > 0){
+            $response = array('result' => "Usuario ya registrado");
+            echo json_encode($response);
+            exit();
+            return;
+         }
+         $sql = "INSERT INTO empresa_cliente(nombre,correo,descripcion,telefono,clave) VALUES (:nombre,:correo,:descripcion,:telefono,:clave)";
          $result = $this->db->prepare($sql);
          $result->bindParam('nombre',$nombre, PDO::PARAM_STR, 12 );
          $result->bindParam ('correo',$correo, PDO::PARAM_STR, 12);
          $result->bindParam ('descripcion',$descripcion, PDO::PARAM_STR, 12);
+         $result->bindParam ('telefono',$telefono, PDO::PARAM_INT, 12);
          $clave_hash=password_hash($clave,PASSWORD_DEFAULT);
          $result->bindParam ('clave',$clave_hash,PDO::PARAM_STR, 255);
-         //$result->bindParam('clave',$clave);
          if($result->execute()){
             $json = $result->fetch(PDO::FETCH_ASSOC);
-            return true;
-            echo json_encode($json);
-            
+            $response = array('result' => "SUCCESS");
+            echo json_encode($response);
+            exit();
          }else{
-            return false;
+
+            $response = array('result' => "Error al registrar usuario");
+            echo json_encode($response);
+            exit();
          }
+
      }
 
      public function ValidarEmpresa($correo,$clave){
@@ -33,10 +57,16 @@ class EmpresaCliente {
       $result->bindParam('correo',$correo);
       $result->execute();
       $fila = $result->fetch(PDO::FETCH_ASSOC);
-      if(password_verify($clave,$fila["clave"])){
-         return true;
+      if(!$fila){
+         $response = array('result' => "Error en el usuario o contraseña");
+         echo json_encode($response);
+         exit();
       }
-      return false;
+      if(password_verify($clave,$fila["clave"])){
+         $json = array('cliente' => $fila, 'result'=>'SUCCESS');
+         echo json_encode($json);
+         exit();
+      }
    }
 
      public function getEmpresa() {
